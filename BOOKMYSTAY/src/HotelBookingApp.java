@@ -1,73 +1,85 @@
-import java.util.HashMap;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Scanner;
 
-abstract class Room {
-    private int beds;
-    private int size;
-    private double price;
+class RoomInventory {
+    private Map<String, Integer> inventory = new LinkedHashMap<>();
 
-    public Room(int beds, int size, double price) {
-        this.beds = beds;
-        this.size = size;
-        this.price = price;
+    public RoomInventory() {
+        inventory.put("Single", 5);
+        inventory.put("Double", 3);
+        inventory.put("Suite", 2);
     }
 
-    public void displayInfo() {
-        System.out.println("Beds: " + beds);
-        System.out.println("Size: " + size + " sqft");
-        System.out.println("Price per night: " + price);
+    public void setInventory(String roomType, int count) {
+        inventory.put(roomType, count);
     }
 
-}
-
-class SingleRoom extends Room {
-
-
-    public SingleRoom() {
-        super(1, 250, 1500.0);
+    public Map<String, Integer> getInventoryMap() {
+        return inventory;
     }
 
-}
-
-class DoubleRoom extends Room {
-    public DoubleRoom() {
-        super(2, 400, 2500.0);
+    public void displayInventory() {
+        System.out.println("\nCurrent Inventory:");
+        System.out.println("Single: " + inventory.get("Single"));
+        System.out.println("Double: " + inventory.get("Double"));
+        System.out.println("Suite: " + inventory.get("Suite"));
     }
 }
 
-class SuiteRoom extends Room {
-    public SuiteRoom() {
-        super(3, 750, 5000.0);
+class FilePersistenceService {
+    public void saveInventory(RoomInventory inventory, String filePath) {
+        try (FileWriter writer = new FileWriter(filePath)) {
+            for (Map.Entry<String, Integer> entry : inventory.getInventoryMap().entrySet()) {
+                writer.write(entry.getKey() + "-" + entry.getValue() + "\n");
+            }
+            System.out.println("\nInventory saved successfully.");
+        } catch (IOException e) {
+            System.out.println("\nError saving inventory.");
+        }
+    }
+
+    public void loadInventory(RoomInventory inventory, String filePath) {
+        File file = new File(filePath);
+        if (!file.exists()) {
+            System.out.println("No valid inventory data found. Starting fresh.");
+            return;
+        }
+
+        try (Scanner scanner = new Scanner(file)) {
+            while (scanner.hasNextLine()) {
+                String line = scanner.nextLine();
+                String[] parts = line.split("-");
+                if (parts.length == 2) {
+                    inventory.setInventory(parts[0], Integer.parseInt(parts[1]));
+                }
+            }
+        } catch (FileNotFoundException e) {
+            System.out.println("No valid inventory data found. Starting fresh.");
+        }
     }
 }
 
-public class HotelBookingApp{
+public class HotelBookingApp {
     public static void main(String[] args) {
-        // Initialize Inventory (System State)
-        Map<String, Integer> availability = new HashMap<>();
-        availability.put("Single", 5);
-        availability.put("Double", 3);
-        availability.put("Suite", 2);
+        System.out.println("System Recovery\n");
 
-        System.out.println("--- Room Search Results ---\n");
+        String filePath = "inventory_state.txt";
 
-        // Logic to check and display availability without modifying the map
-        if (availability.get("Single") > 0) {
-            System.out.println("Single Room:");
-            new SingleRoom().displayInfo();
-            System.out.println("Available: " + availability.get("Single"));
+        File file = new File(filePath);
+        if (file.exists()) {
+            file.delete();
         }
 
-        if (availability.get("Double") > 0) {
-            System.out.println("\nDouble Room:");
-            new DoubleRoom().displayInfo();
-            System.out.println("Available: " + availability.get("Double"));
-        }
+        RoomInventory inventory = new RoomInventory();
+        FilePersistenceService persistenceService = new FilePersistenceService();
 
-        if (availability.get("Suite") > 0) {
-            System.out.println("\nSuite Room:");
-            new SuiteRoom().displayInfo();
-            System.out.println("Available: " + availability.get("Suite"));
-        }
+        persistenceService.loadInventory(inventory, filePath);
+        inventory.displayInventory();
+        persistenceService.saveInventory(inventory, filePath);
     }
 }
