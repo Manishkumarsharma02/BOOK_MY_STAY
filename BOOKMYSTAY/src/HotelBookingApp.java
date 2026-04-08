@@ -1,73 +1,60 @@
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
-abstract class Room {
-    private int beds;
-    private int size;
+class Service {
+    private String name;
     private double price;
 
-    public Room(int beds, int size, double price) {
-        this.beds = beds;
-        this.size = size;
+    public Service(String name, double price) {
+        this.name = name;
         this.price = price;
     }
 
-    public void displayInfo() {
-        System.out.println("Beds: " + beds);
-        System.out.println("Size: " + size + " sqft");
-        System.out.println("Price per night: " + price);
-    }
-
+    public String getName() { return name; }
+    public double getPrice() { return price; }
 }
 
-class SingleRoom extends Room {
+class AddOnServiceManager {
+    private Map<String, List<Service>> selections = new HashMap<>();
 
-
-    public SingleRoom() {
-        super(1, 250, 1500.0);
+    public void addService(String reservationId, Service service) {
+        selections.computeIfAbsent(reservationId, k -> new ArrayList<>()).add(service);
     }
 
-}
-
-class DoubleRoom extends Room {
-    public DoubleRoom() {
-        super(2, 400, 2500.0);
-    }
-}
-
-class SuiteRoom extends Room {
-    public SuiteRoom() {
-        super(3, 750, 5000.0);
+    public void displaySelectedServices(String reservationId) {
+        List<Service> services = selections.get(reservationId);
+        if (services != null) {
+            double total = 0;
+            for (Service s : services) {
+                System.out.println("- " + s.getName() + " ($" + s.getPrice() + ")");
+                total += s.getPrice();
+            }
+            System.out.println("Total Add-On Cost: $" + total);
+        }
     }
 }
 
 public class HotelBookingApp{
     public static void main(String[] args) {
-        // Initialize Inventory (System State)
-        Map<String, Integer> availability = new HashMap<>();
-        availability.put("Single", 5);
-        availability.put("Double", 3);
-        availability.put("Suite", 2);
+        System.out.println("Add-On Service Selection");
+        System.out.println("---------------------------");
 
-        System.out.println("--- Room Search Results ---\n");
+        AddOnServiceManager manager = new AddOnServiceManager();
 
-        // Logic to check and display availability without modifying the map
-        if (availability.get("Single") > 0) {
-            System.out.println("Single Room:");
-            new SingleRoom().displayInfo();
-            System.out.println("Available: " + availability.get("Single"));
-        }
+        Service wifi = new Service("High-Speed WiFi", 15.0);
+        Service breakfast = new Service("Buffet Breakfast", 25.0);
+        Service spa = new Service("Spa Treatment", 100.0);
 
-        if (availability.get("Double") > 0) {
-            System.out.println("\nDouble Room:");
-            new DoubleRoom().displayInfo();
-            System.out.println("Available: " + availability.get("Double"));
-        }
+        String resId = "Single-1";
+        System.out.println("Guest Reservation ID: " + resId);
 
-        if (availability.get("Suite") > 0) {
-            System.out.println("\nSuite Room:");
-            new SuiteRoom().displayInfo();
-            System.out.println("Available: " + availability.get("Suite"));
-        }
+        manager.addService(resId, wifi);
+        manager.addService(resId, breakfast);
+
+        System.out.println("Selected Add-Ons:");
+        manager.displaySelectedServices(resId);
+        System.out.println("---------------------------");
     }
 }
