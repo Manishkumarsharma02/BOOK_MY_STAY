@@ -1,73 +1,66 @@
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.Map;
+import java.util.Queue;
 
-abstract class Room {
-    private int beds;
-    private int size;
-    private double price;
+class Reservation {
+    private String guestName;
+    private String roomType;
 
-    public Room(int beds, int size, double price) {
-        this.beds = beds;
-        this.size = size;
-        this.price = price;
+    public Reservation(String guestName, String roomType) {
+        this.guestName = guestName;
+        this.roomType = roomType;
     }
 
-    public void displayInfo() {
-        System.out.println("Beds: " + beds);
-        System.out.println("Size: " + size + " sqft");
-        System.out.println("Price per night: " + price);
-    }
-
+    public String getGuestName() { return guestName; }
+    public String getRoomType() { return roomType; }
 }
 
-class SingleRoom extends Room {
+class RoomAllocationService {
+    private Map<String, Integer> inventory = new HashMap<>();
+    private Map<String, Integer> roomCounter = new HashMap<>();
 
+    public RoomAllocationService() {
 
-    public SingleRoom() {
-        super(1, 250, 1500.0);
+        inventory.put("Single", 2); // Set to 2 to demonstrate "No Rooms Available"
+        inventory.put("Double", 3);
+        inventory.put("Suite", 2);
     }
 
-}
+    public void processBooking(Reservation reservation) {
+        String type = reservation.getRoomType();
+        int available = inventory.getOrDefault(type, 0);
 
-class DoubleRoom extends Room {
-    public DoubleRoom() {
-        super(2, 400, 2500.0);
+        if (available > 0) {
+            inventory.put(type, available - 1);
+
+            int currentCount = roomCounter.getOrDefault(type, 0) + 1;
+            roomCounter.put(type, currentCount);
+            String roomId = type + "-" + currentCount;
+
+            System.out.println("Booking confirmed for Guest: " + reservation.getGuestName() +
+                    ", Room ID: " + roomId);
+        } else {
+            System.out.println("Booking failed for Guest: " + reservation.getGuestName() +
+                    ". No " + type + " Rooms available.");
+        }
     }
 }
 
-class SuiteRoom extends Room {
-    public SuiteRoom() {
-        super(3, 750, 5000.0);
-    }
-}
-
-public class HotelBookingApp{
+public class HotelBookingApp {
     public static void main(String[] args) {
-        // Initialize Inventory (System State)
-        Map<String, Integer> availability = new HashMap<>();
-        availability.put("Single", 5);
-        availability.put("Double", 3);
-        availability.put("Suite", 2);
+        System.out.println("Room Allocation Processing");
 
-        System.out.println("--- Room Search Results ---\n");
+        Queue<Reservation> bookingQueue = new LinkedList<>();
+        bookingQueue.add(new Reservation("Abhi", "Single"));
+        bookingQueue.add(new Reservation("Subha", "Single"));
+        bookingQueue.add(new Reservation("Vanmathi", "Single")); // This should fail as we only have 2
 
-        // Logic to check and display availability without modifying the map
-        if (availability.get("Single") > 0) {
-            System.out.println("Single Room:");
-            new SingleRoom().displayInfo();
-            System.out.println("Available: " + availability.get("Single"));
-        }
 
-        if (availability.get("Double") > 0) {
-            System.out.println("\nDouble Room:");
-            new DoubleRoom().displayInfo();
-            System.out.println("Available: " + availability.get("Double"));
-        }
+        RoomAllocationService service = new RoomAllocationService();
 
-        if (availability.get("Suite") > 0) {
-            System.out.println("\nSuite Room:");
-            new SuiteRoom().displayInfo();
-            System.out.println("Available: " + availability.get("Suite"));
+        while (!bookingQueue.isEmpty()) {
+            service.processBooking(bookingQueue.poll());
         }
     }
 }
