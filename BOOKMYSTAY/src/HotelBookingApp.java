@@ -1,73 +1,137 @@
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.Map;
+import java.util.Queue;
 
-abstract class Room {
-    private int beds;
-    private int size;
-    private double price;
+class Reservation {
+    private String guestName;
+    private String roomType;
 
-    public Room(int beds, int size, double price) {
-        this.beds = beds;
-        this.size = size;
-        this.price = price;
+    public Reservation(String guestName, String roomType) {
+        this.guestName = guestName;
+        this.roomType = roomType;
     }
 
-    public void displayInfo() {
-        System.out.println("Beds: " + beds);
-        System.out.println("Size: " + size + " sqft");
-        System.out.println("Price per night: " + price);
-    }
-
+    public String getGuestName() { return guestName; }
+    public String getRoomType() { return roomType; }
 }
 
-class SingleRoom extends Room {
+class BookingRequestQueue {
+    private Queue<Reservation> queue = new LinkedList<>();
 
-
-    public SingleRoom() {
-        super(1, 250, 1500.0);
+    public void addRequest(Reservation request) {
+        queue.add(request);
     }
 
-}
+    public Reservation processNextRequest() {
+        return queue.poll();
+    }
 
-class DoubleRoom extends Room {
-    public DoubleRoom() {
-        super(2, 400, 2500.0);
+    public boolean hasPendingRequests() {
+        return !queue.isEmpty();
     }
 }
 
-class SuiteRoom extends Room {
-    public SuiteRoom() {
-        super(3, 750, 5000.0);
+class RoomInventory {
+    private Map<String, Integer> inventory = new HashMap<>();
+
+    public RoomInventory() {
+        inventory.put("Single", 5);
+        inventory.put("Double", 3);
+        inventory.put("Suite", 2);
+    }
+
+    public int getAvailability(String roomType) {
+        return inventory.getOrDefault(roomType, 0);
+    }
+
+    public void decreaseInventory(String roomType) {
+        inventory.put(roomType, inventory.get(roomType) - 1);
+    }
+
+    public void printRemainingInventory() {
+        System.out.println("Remaining Inventory:");
+        System.out.println("Single: " + inventory.get("Single"));
+        System.out.println("Double: " + inventory.get("Double"));
+        System.out.println("Suite: " + inventory.get("Suite"));
     }
 }
 
-public class HotelBookingApp{
+class RoomAllocationService {
+    private Map<String, Integer> roomCounter = new HashMap<>();
+
+    public void allocateRoom(Reservation reservation, RoomInventory inventory) {
+        String type = reservation.getRoomType();
+        if (inventory.getAvailability(type) > 0) {
+            inventory.decreaseInventory(type);
+            int count = roomCounter.getOrDefault(type, 0) + 1;
+            roomCounter.put(type, count);
+            String roomId = type + "-" + count;
+            System.out.println("Booking confirmed for Guest: " + reservation.getGuestName() + ", Room ID: " + roomId);
+        }
+    }
+}
+
+class ConcurrentBookingProcessor implements Runnable {
+    private BookingRequestQueue bookingQueue;
+    private RoomInventory inventory;
+    private RoomAllocationService allocationService;
+
+    public ConcurrentBookingProcessor(BookingRequestQueue bookingQueue, RoomInventory inventory, RoomAllocationService allocationService) {
+        this.bookingQueue = bookingQueue;
+        this.inventory = inventory;
+        this.allocationService = allocationService;
+    }
+
+    @Override
+    public void run() {
+        while (true) {
+            Reservation reservation = null;
+
+            synchronized (bookingQueue) {
+                if (bookingQueue.hasPendingRequests()) {
+                    reservation = bookingQueue.processNextRequest();
+                }
+            }
+
+            if (reservation == null) {
+                break;
+            }
+
+            synchronized (inventory) {
+                allocationService.allocateRoom(reservation, inventory);
+            }
+        }
+    }
+}
+
+public class HotelBookingApp {
     public static void main(String[] args) {
-        // Initialize Inventory (System State)
-        Map<String, Integer> availability = new HashMap<>();
-        availability.put("Single", 5);
-        availability.put("Double", 3);
-        availability.put("Suite", 2);
+        System.out.println("Concurrent Booking Simulation\n");
 
-        System.out.println("--- Room Search Results ---\n");
+        BookingRequestQueue bookingQueue = new BookingRequestQueue();
+        bookingQueue.addRequest(new Reservation("Abhi", "Single"));
+        bookingQueue.addRequest(new Reservation("Vanmathi", "Double"));
+        bookingQueue.addRequest(new Reservation("Kural", "Suite"));
+        bookingQueue.addRequest(new Reservation("Subha", "Single"));
 
-        // Logic to check and display availability without modifying the map
-        if (availability.get("Single") > 0) {
-            System.out.println("Single Room:");
-            new SingleRoom().displayInfo();
-            System.out.println("Available: " + availability.get("Single"));
+        RoomInventory inventory = new RoomInventory();
+        RoomAllocationService allocationService = new RoomAllocationService();
+
+        Thread t1 = new Thread(new ConcurrentBookingProcessor(bookingQueue, inventory, allocationService));
+        Thread t2 = new Thread(new ConcurrentBookingProcessor(bookingQueue, inventory, allocationService));
+
+        t1.start();
+        t2.start();
+
+        try {
+            t1.join();
+            t2.join();
+        } catch (InterruptedException e) {
+            System.out.println("Thread execution interrupted.");
         }
 
-        if (availability.get("Double") > 0) {
-            System.out.println("\nDouble Room:");
-            new DoubleRoom().displayInfo();
-            System.out.println("Available: " + availability.get("Double"));
-        }
-
-        if (availability.get("Suite") > 0) {
-            System.out.println("\nSuite Room:");
-            new SuiteRoom().displayInfo();
-            System.out.println("Available: " + availability.get("Suite"));
-        }
+        System.out.println();
+        inventory.printRemainingInventory();
     }
 }
