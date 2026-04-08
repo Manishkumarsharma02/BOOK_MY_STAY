@@ -70,7 +70,6 @@ class RoomAllocationService {
             System.out.println("Booking confirmed for Guest: " + reservation.getGuestName() + ", Room ID: " + roomId);
         }
     }
-}
 
 class ConcurrentBookingProcessor implements Runnable {
     private BookingRequestQueue bookingQueue;
